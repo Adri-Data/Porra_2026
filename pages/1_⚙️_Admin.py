@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.database import db
+from utils.database import GameDB
 
 st.set_page_config(page_title="Admin Panel", page_icon="⚙️")
 
@@ -15,9 +15,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def get_db():
+    return GameDB()
+
 def admin_page():
     st.title("⚙️ Panel de Control")
-    
+    db = get_db()
     # Autenticación desde secrets.toml
     password = st.sidebar.text_input("Contraseña de Admin", type="password")
     admin_pass = st.secrets.get("general", {}).get("admin_password", "2026")
