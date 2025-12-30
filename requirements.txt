@@ -1,0 +1,8 @@
+streamlit
+st-gsheets-connection
+pandas
+extra-streamlit-components
+plotly
+wordcloud
+matplotlib
+Pillow
