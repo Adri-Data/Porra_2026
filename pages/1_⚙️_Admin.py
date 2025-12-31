@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils.database import GameDB
+import plotly.express as px
 
 st.set_page_config(page_title="Admin Panel", page_icon="⚙️")
 
@@ -95,55 +96,111 @@ def admin_page():
                 
                 if palabras.strip():
                     from wordcloud import WordCloud
-                    import matplotlib.pyplot as plt
                     
                     wordcloud = WordCloud(width=800, height=400, background_color='black', 
                                          colormap='magma', max_words=50).generate(palabras)
                     
-                    fig, ax = plt.subplots()
-                    ax.imshow(wordcloud, interpolation='bilinear')
-                    ax.axis("off")
-                    st.pyplot(fig)
+                    st.image(wordcloud.to_image(), use_container_width=True)
 
-            with col2:
-                import plotly.express as px
-                st.markdown("**🚗 ¿Quién se comprará un coche?**")
-                coche_counts = data['Comprara Coche'].value_counts()
-                if "Saltado" in coche_counts: coche_counts = coche_counts.drop("Saltado")
-                if not coche_counts.empty:
-                    fig_coche = px.pie(values=coche_counts.values, names=coche_counts.index, hole=.3)
-                    fig_coche.update_layout(showlegend=False, height=300, margin=dict(t=0, b=0, l=0, r=0))
-                    st.plotly_chart(fig_coche, use_container_width=True)
+
+            # --- SECCIÓN 1: EL MUNDO EN 2026 ---
+            st.markdown("### 🌍 El Mundo en 2026")
+            col_m1, col_m2, col_m3 = st.columns(3)
+            
+            def get_top_vote(column_name):
+                if column_name in data.columns:
+                    counts = data[column_name].value_counts()
+                    if not counts.empty:
+                        return counts.index[0], counts.values[0]
+                return "N/A", 0
+
+            with col_m1:
+                top_m, v_m = get_top_vote('Ganador Mundial')
+                st.metric("Favorito Mundial ⚽", top_m, f"{v_m} votos")
+            with col_m2:
+                top_c, v_c = get_top_vote('Ganador Champions')
+                st.metric("Favorito Champions 🏆", top_c, f"{v_c} votos")
+            with col_m3:
+                top_l, v_l = get_top_vote('Ganador Liga')
+                st.metric("Favorito Liga 🇪🇸", top_l, f"{v_l} votos")
+
+            with st.expander("Ver todas las predicciones mundiales (Necroporra, Elecciones...)"):
+                world_cols = ['Ganador Mundial', 'Ganador Champions', 'Ganador Liga', 'Ganador SuperBowl', 'Elecciones España', 'Necroporra', 'Mision Artemis', 'Avengers Hit', 'Bombazo Famosos']
+                available_cols = [c for c in world_cols if c in data.columns]
+                if available_players := data['Jugador'].tolist():
+                    for idx, row in data.iterrows():
+                        st.markdown(f"**{row['Jugador']}**")
+                        for c in available_cols:
+                            if not pd.isna(row.get(c)):
+                                st.write(f"- *{c}*: {row[c]}")
+                        st.divider()
 
             st.divider()
-            
-            col3, col4 = st.columns(2)
-            
-            with col3:
-                st.markdown("**📢 Próxima Gran Noticia**")
-                noticia_counts = data['Noticia Proximamente'].value_counts()
-                if "Saltado" in noticia_counts: noticia_counts = noticia_counts.drop("Saltado")
-                if not noticia_counts.empty:
-                    fig_noticia = px.bar(noticia_counts, x=noticia_counts.index, y=noticia_counts.values)
-                    st.plotly_chart(fig_noticia, use_container_width=True)
 
-            with col4:
-                st.markdown("**💪 Mayor Cambio Físico**")
-                fisico_counts = data['Cambio Fisico'].value_counts()
-                if "Saltado" in fisico_counts: fisico_counts = fisico_counts.drop("Saltado")
-                if not fisico_counts.empty:
-                    fig_fisico = px.bar(fisico_counts, x=fisico_counts.index, y=fisico_counts.values,
-                                       color_discrete_sequence=['#ff4b2b'])
-                    st.plotly_chart(fig_fisico, use_container_width=True)
+            # --- SECCIÓN 2: PREDICCIONES GRUPALES ---
+            st.markdown("### 🫂 Porra de Grupo (NPM)")
+            
+            group_keys = [
+                ('Noticia Importante', '#ff4b2b'),
+                ('Noticia Inesperada', '#6a11cb'),
+                ('Relacion Sorpresa', '#ff0080'),
+                ('Anecdota Surrealista', '#2575fc'),
+                ('Frase Mitica', '#00d2ff'),
+                ('Cambio Fisico', '#3a7bd5'),
+                ('Comprara Coche', '#f2994a')
+            ]
+            
+            # Mostrar en una cuadrícula de 2 columnas
+            for i in range(0, len(group_keys), 2):
+                c1, c2 = st.columns(2)
+                for j, (key, color) in enumerate(group_keys[i:i+2]):
+                    col = c1 if j == 0 else c2
+                    with col:
+                        if key in data.columns:
+                            st.markdown(f"**🎯 {key}**")
+                            counts = data[key].value_counts()
+                            if "" in counts.index: counts = counts.drop("")
+                            if not counts.empty:
+                                fig = px.bar(counts, x=counts.index, y=counts.values, 
+                                             color_discrete_sequence=[color])
+                                fig.update_layout(height=250, margin=dict(t=0, b=0, l=0, r=0))
+                                st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.write(f"Sin datos de {key}")
 
             st.divider()
-            st.markdown("**💭 Expectativas para 2026**")
-            for idx, row in data.iterrows():
-                if row['Expectativa 2026'] != "Saltado":
-                    with st.expander(f"Ver lo que espera {row['Jugador']}"):
-                        st.write(f"**Vibe:** {row.get('Mood Vibe', 'N/A')}")
-                        st.write(f"**Expectativa:** {row['Expectativa 2026']}")
-                        st.write(f"**Momento Top 2025:** {row.get('Momento Top 2025', 'N/A')}")
+
+            # --- SECCIÓN 3: INSIGHTS PERSONALES ---
+            st.markdown("### 💭 Expectativas y Análisis 1 a 1")
+            
+            players_list = data['Jugador'].tolist()
+            selected_p = st.selectbox("Selecciona un jugador para ver su reporte completo:", players_list)
+            
+            if selected_p:
+                p_row = data[data['Jugador'] == selected_p].iloc[0]
+                col_p1, col_p2 = st.columns(2)
+                
+                with col_p1:
+                    st.markdown(f"#### El 2025 de {selected_p}")
+                    st.write(f"**Palabra:** {p_row.get('Palabra 2025', 'N/A')}")
+                    st.write(f"**¿Cómo le ha ido?:** {p_row.get('Descripcion 2025', 'N/A')}")
+                    st.write(f"**Momento TOP:** {p_row.get('Momento Top 2025', 'N/A')}")
+                
+                with col_p2:
+                    st.markdown(f"#### El 2026 de {selected_p}")
+                    st.write(f"**Palabra:** {p_row.get('Palabra 2026', 'N/A')}")
+                    st.write(f"**Expectativa:** {p_row.get('Expectativa 2026', 'N/A')}")
+                
+                st.markdown("#### 💌 Lo que dicen los demás sobre él/ella:")
+                for other_p in players_list:
+                    if other_p != selected_p:
+                        col_key = f"Sobre {selected_p}"
+                        if col_key in data.columns:
+                            other_row = data[data['Jugador'] == other_p].iloc[0]
+                            opinion = other_row.get(col_key)
+                            if opinion and opinion != "Saltado":
+                                with st.chat_message(other_p):
+                                    st.write(f"**Para {selected_p}:** {opinion}")
 
         else:
             st.write("Aún no hay datos para mostrar insights.")
